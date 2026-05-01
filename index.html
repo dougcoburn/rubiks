@@ -61,7 +61,7 @@
     
     <div class="ui">
         <h1>🟥🟧 Rubik's Cube</h1>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;max-width:380px;">
+        <div style="display:flex;flex-wrap:wrap;gap:6px;max-width:420px;">
             <button onclick="rotateLayer('U')" class="primary">U</button>
             <button onclick="rotateLayer('U', true)">U'</button>
             <button onclick="rotateLayer('D')">D</button>
@@ -75,43 +75,33 @@
             <button onclick="rotateLayer('B')">B</button>
             <button onclick="rotateLayer('B', true)">B'</button>
             <button onclick="scramble()" class="primary">🎲 Scramble</button>
-            <button onclick="resetCube()">Reset</button>
+            <button onclick="resetCube()">Reset Cube</button>
+            <button onclick="resetView()">Reset View</button>
         </div>
-        <div id="status" class="status">Drag to rotate • Scroll to zoom • Click buttons to turn faces</div>
+        <div id="status" class="status">Drag to rotate • Scroll to zoom • Buttons to turn faces</div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script>
-        // ============== THREE.JS SETUP ==============
         const container = document.getElementById('container');
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x0f0f23);
         
         const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(4, 4, 6);
-        
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(window.devicePixelRatio);
         container.appendChild(renderer.domElement);
 
         // Lights
-        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
         dirLight.position.set(10, 10, 5);
         scene.add(dirLight);
 
-        // ============== CUBE DATA ==============
+        // Cube data
         const CUBIE_SIZE = 0.95;
-        const colors = {
-            U: 0xffffff, // white
-            D: 0xf1c40f, // yellow
-            L: 0x27ae60, // green
-            R: 0x3498db, // blue
-            F: 0xe74c3c, // red
-            B: 0xe67e22  // orange
-        };
-
+        const colors = { U: 0xffffff, D: 0xf1c40f, L: 0x27ae60, R: 0x3498db, F: 0xe74c3c, B: 0xe67e22 };
         let cubies = [];
         let cubeGroup = new THREE.Group();
         scene.add(cubeGroup);
@@ -119,12 +109,12 @@
         function createCubie(x, y, z) {
             const geometry = new THREE.BoxGeometry(CUBIE_SIZE, CUBIE_SIZE, CUBIE_SIZE);
             const materials = [
-                new THREE.MeshPhongMaterial({ color: (x === 1) ? colors.R : 0x222222 }), // right
-                new THREE.MeshPhongMaterial({ color: (x === -1) ? colors.L : 0x222222 }), // left
-                new THREE.MeshPhongMaterial({ color: (y === 1) ? colors.U : 0x222222 }), // up
-                new THREE.MeshPhongMaterial({ color: (y === -1) ? colors.D : 0x222222 }), // down
-                new THREE.MeshPhongMaterial({ color: (z === 1) ? colors.F : 0x222222 }), // front
-                new THREE.MeshPhongMaterial({ color: (z === -1) ? colors.B : 0x222222 })  // back
+                new THREE.MeshPhongMaterial({ color: (x === 1) ? colors.R : 0x222222 }),
+                new THREE.MeshPhongMaterial({ color: (x === -1) ? colors.L : 0x222222 }),
+                new THREE.MeshPhongMaterial({ color: (y === 1) ? colors.U : 0x222222 }),
+                new THREE.MeshPhongMaterial({ color: (y === -1) ? colors.D : 0x222222 }),
+                new THREE.MeshPhongMaterial({ color: (z === 1) ? colors.F : 0x222222 }),
+                new THREE.MeshPhongMaterial({ color: (z === -1) ? colors.B : 0x222222 })
             ];
             const cubie = new THREE.Mesh(geometry, materials);
             cubie.position.set(x, y, z);
@@ -139,7 +129,7 @@
             for (let x = -1; x <= 1; x++) {
                 for (let y = -1; y <= 1; y++) {
                     for (let z = -1; z <= 1; z++) {
-                        if (Math.abs(x) + Math.abs(y) + Math.abs(z) > 0) { // skip very center
+                        if (Math.abs(x) + Math.abs(y) + Math.abs(z) > 0) {
                             createCubie(x, y, z);
                         }
                     }
@@ -147,11 +137,21 @@
             }
         }
 
-        // ============== SIMPLE MOUSE ORBIT ==============
+        // Camera setup - FIXED CENTERING
+        function resetCamera() {
+            camera.position.set(5, 5, 8);
+            camera.lookAt(0, 0, 0);
+        }
+
+        function resetView() {
+            cubeGroup.rotation.set(0.35, 0.8, 0);
+            resetCamera();
+        }
+
+        // Mouse orbit
         let isDragging = false;
-        let previousMouseX = 0;
-        let previousMouseY = 0;
-        let rotationSpeed = 0.005;
+        let previousMouseX = 0, previousMouseY = 0;
+        const rotationSpeed = 0.005;
 
         container.addEventListener('mousedown', e => { isDragging = true; previousMouseX = e.clientX; previousMouseY = e.clientY; });
         window.addEventListener('mouseup', () => isDragging = false);
@@ -165,54 +165,47 @@
             previousMouseY = e.clientY;
         });
 
-        // Zoom with wheel
+        // Zoom
         container.addEventListener('wheel', e => {
             camera.position.multiplyScalar(1 + e.deltaY * 0.001);
-            camera.position.clampLength(3, 12);
+            camera.position.clampLength(4, 15);
+            camera.lookAt(0, 0, 0);   // keep centered while zooming
         });
 
-        // Resize handler
+        // Resize
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        // ============== LAYER ROTATION (basic animated) ==============
+        // Layer rotation (animated)
         function rotateLayer(face, prime = false) {
             const angle = prime ? -Math.PI / 2 : Math.PI / 2;
-            const axis = new THREE.Vector3();
-            
-            // Determine which cubies belong to this layer
             const layerCubies = [];
             cubies.forEach(cubie => {
-                const pos = cubie.userData;
-                if (face === 'U' && pos.y === 1) layerCubies.push(cubie);
-                else if (face === 'D' && pos.y === -1) layerCubies.push(cubie);
-                else if (face === 'L' && pos.x === -1) layerCubies.push(cubie);
-                else if (face === 'R' && pos.x === 1) layerCubies.push(cubie);
-                else if (face === 'F' && pos.z === 1) layerCubies.push(cubie);
-                else if (face === 'B' && pos.z === -1) layerCubies.push(cubie);
+                const p = cubie.userData;
+                if (face === 'U' && p.y === 1) layerCubies.push(cubie);
+                else if (face === 'D' && p.y === -1) layerCubies.push(cubie);
+                else if (face === 'L' && p.x === -1) layerCubies.push(cubie);
+                else if (face === 'R' && p.x === 1) layerCubies.push(cubie);
+                else if (face === 'F' && p.z === 1) layerCubies.push(cubie);
+                else if (face === 'B' && p.z === -1) layerCubies.push(cubie);
             });
 
-            // Temporary group for smooth animation
             const tempGroup = new THREE.Group();
             cubeGroup.add(tempGroup);
-            layerCubies.forEach(c => {
-                cubeGroup.remove(c);
-                tempGroup.add(c);
-            });
+            layerCubies.forEach(c => { cubeGroup.remove(c); tempGroup.add(c); });
 
-            // Animate rotation
             let progress = 0;
-            const duration = 400; // ms
+            const duration = 420;
             const startTime = Date.now();
 
             function animateTurn() {
                 const elapsed = Date.now() - startTime;
                 progress = Math.min(elapsed / duration, 1);
                 const currentAngle = progress * angle;
-                
+
                 if (face === 'U' || face === 'D') tempGroup.rotation.y = currentAngle;
                 else if (face === 'L' || face === 'R') tempGroup.rotation.x = currentAngle;
                 else if (face === 'F' || face === 'B') tempGroup.rotation.z = currentAngle;
@@ -220,18 +213,15 @@
                 if (progress < 1) {
                     requestAnimationFrame(animateTurn);
                 } else {
-                    // Finish rotation and re-attach cubies
                     cubeGroup.remove(tempGroup);
                     layerCubies.forEach(c => cubeGroup.add(c));
-                    // Update positions/rotations permanently (simplified - full logic would snap positions)
-                    cubeGroup.rotation.set(0, 0, 0); // reset group if needed
                 }
                 render();
             }
             animateTurn();
         }
 
-        // ============== SCRAMBLE & RESET ==============
+        // Scramble & Reset
         async function scramble() {
             const moves = ['U','D','L','R','F','B'];
             document.getElementById('status').textContent = 'Scrambling...';
@@ -239,27 +229,27 @@
                 const face = moves[Math.floor(Math.random() * 6)];
                 const prime = Math.random() > 0.5;
                 rotateLayer(face, prime);
-                await new Promise(r => setTimeout(r, 120));
+                await new Promise(r => setTimeout(r, 110));
             }
-            document.getElementById('status').textContent = 'Scrambled! Good luck solving it 🎉';
+            document.getElementById('status').textContent = 'Scrambled! Good luck 🎉';
         }
 
         function resetCube() {
-            cubeGroup.rotation.set(0, 0, 0);
-            // Rebuild cube (simple reset)
-            while (cubeGroup.children.length > 0) cubeGroup.remove(cubeGroup.children[0]);
+            while (cubeGroup.children.length) cubeGroup.remove(cubeGroup.children[0]);
             buildCube();
+            cubeGroup.rotation.set(0.35, 0.8, 0);
             document.getElementById('status').textContent = 'Cube reset';
-            setTimeout(() => document.getElementById('status').textContent = 'Ready', 1200);
+            setTimeout(() => document.getElementById('status').textContent = 'Ready', 1400);
         }
 
         function render() {
             renderer.render(scene, camera);
         }
 
-        // ============== INIT ==============
         function init() {
             buildCube();
+            resetCamera();
+            cubeGroup.rotation.set(0.35, 0.8, 0);   // nice starting angle
             function animate() {
                 requestAnimationFrame(animate);
                 render();
