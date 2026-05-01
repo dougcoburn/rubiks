@@ -137,7 +137,6 @@
             }
         }
 
-        // Camera setup - FIXED CENTERING
         function resetCamera() {
             camera.position.set(5, 5, 8);
             camera.lookAt(0, 0, 0);
@@ -169,7 +168,7 @@
         container.addEventListener('wheel', e => {
             camera.position.multiplyScalar(1 + e.deltaY * 0.001);
             camera.position.clampLength(4, 15);
-            camera.lookAt(0, 0, 0);   // keep centered while zooming
+            camera.lookAt(0, 0, 0);
         });
 
         // Resize
@@ -179,26 +178,32 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        // Layer rotation (animated)
+        // FIXED: Layer rotation that actually persists
         function rotateLayer(face, prime = false) {
-            const angle = prime ? -Math.PI / 2 : Math.PI / 2;
-            const layerCubies = [];
-            cubies.forEach(cubie => {
+            const direction = prime ? -1 : 1;
+            const angle = direction * Math.PI / 2;
+
+            const layerCubies = cubies.filter(cubie => {
                 const p = cubie.userData;
-                if (face === 'U' && p.y === 1) layerCubies.push(cubie);
-                else if (face === 'D' && p.y === -1) layerCubies.push(cubie);
-                else if (face === 'L' && p.x === -1) layerCubies.push(cubie);
-                else if (face === 'R' && p.x === 1) layerCubies.push(cubie);
-                else if (face === 'F' && p.z === 1) layerCubies.push(cubie);
-                else if (face === 'B' && p.z === -1) layerCubies.push(cubie);
+                if (face === 'U' && p.y === 1) return true;
+                if (face === 'D' && p.y === -1) return true;
+                if (face === 'L' && p.x === -1) return true;
+                if (face === 'R' && p.x === 1) return true;
+                if (face === 'F' && p.z === 1) return true;
+                if (face === 'B' && p.z === -1) return true;
+                return false;
             });
 
             const tempGroup = new THREE.Group();
             cubeGroup.add(tempGroup);
-            layerCubies.forEach(c => { cubeGroup.remove(c); tempGroup.add(c); });
+
+            layerCubies.forEach(c => {
+                cubeGroup.remove(c);
+                tempGroup.add(c);
+            });
 
             let progress = 0;
-            const duration = 420;
+            const duration = 380;
             const startTime = Date.now();
 
             function animateTurn() {
@@ -213,8 +218,22 @@
                 if (progress < 1) {
                     requestAnimationFrame(animateTurn);
                 } else {
+                    // === PERMANENTLY APPLY THE ROTATION ===
+                    const finalMatrix = tempGroup.matrix.clone();
+                    layerCubies.forEach(cubie => {
+                        cubie.applyMatrix4(finalMatrix);
+                        // Snap back to exact grid positions
+                        cubie.position.x = Math.round(cubie.position.x);
+                        cubie.position.y = Math.round(cubie.position.y);
+                        cubie.position.z = Math.round(cubie.position.z);
+                        // Update logical position for future turns
+                        cubie.userData.x = cubie.position.x;
+                        cubie.userData.y = cubie.position.y;
+                        cubie.userData.z = cubie.position.z;
+                    });
+
                     cubeGroup.remove(tempGroup);
-                    layerCubies.forEach(c => cubeGroup.add(c));
+                    layerCubies.forEach(cubie => cubeGroup.add(cubie));
                 }
                 render();
             }
@@ -249,7 +268,7 @@
         function init() {
             buildCube();
             resetCamera();
-            cubeGroup.rotation.set(0.35, 0.8, 0);   // nice starting angle
+            cubeGroup.rotation.set(0.35, 0.8, 0);
             function animate() {
                 requestAnimationFrame(animate);
                 render();
